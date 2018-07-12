@@ -32,3 +32,9 @@ class Robot(models.Model):
         self.output_data = output
 
         self.save()
+
+
+class MyTask(models.Model):
+    task_id = models.CharField(max_length=200)
+    retval = models.TextField()
+    status = models.CharField(max_length=100)

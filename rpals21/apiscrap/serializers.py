@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from .models import Robot
-from .tasks import task_test
+from .tasks import initrobot
 
 
 class UserModelSerializer(serializers.ModelSerializer):
@@ -23,6 +23,6 @@ class RobotModelSerializer(serializers.ModelSerializer):
         return UserModelSerializer(obj.owner).data
 
     def save(self, **kwargs):
-        robot = super(RobotModelSerializer, self).save(**kwargs)
-        # task_test.delay(robot.input_data)
-        return robot
+        # robot = super(RobotModelSerializer, self).save(**kwargs)
+        initrobot.delay()
+        # return robot
