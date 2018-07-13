@@ -1,11 +1,12 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from .models import Robot
-from .tasks import task_test
+from .models import RobotMonitor, TasksRobot
 
 
 class UserModelSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = User
         fields = ('id', 'username', 'first_name', 'last_name')
@@ -16,13 +17,19 @@ class RobotModelSerializer(serializers.ModelSerializer):
     owner_obj = serializers.SerializerMethodField()
 
     class Meta:
-        model = Robot
-        fields = ('id', 'started', 'finished', 'input_data', 'output_data', 'status', 'owner', 'owner_obj')
+        model = RobotMonitor
+        fields = ('id', 'started', 'search_key', 'finished', 'owner', 'owner_obj')
 
     def get_owner_obj(self, obj):
         return UserModelSerializer(obj.owner).data
 
-    def save(self, **kwargs):
-        robot = super(RobotModelSerializer, self).save(**kwargs)
-        # task_test.delay(robot.input_data)
-        return robot
+
+class TaskRobotModelSerializer(serializers.ModelSerializer):
+    robot_monitor_obj = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TasksRobot
+        fields = ('task_celey_id', 'task_label', 'status', 'result', 'robot_monitor_obj', 'robot_monitor',)
+
+    def get_robot_monitor_obj(self, obj):
+        return RobotModelSerializer(read_only=True)
