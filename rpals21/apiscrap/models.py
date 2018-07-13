@@ -35,7 +35,7 @@ class TasksRobot(models.Model):
     task_label = models.CharField(max_length=100, blank=True, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     finished = models.DateTimeField(blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_TASK, default='PENDING')
+    status = models.CharField(max_length=20, choices=STATUS_TASK, default='STARTED')
     result = models.TextField(blank=True, null=True)
     exception = models.TextField(blank=True, null=True)
     meta = models.TextField(blank=True, null=True)
@@ -45,3 +45,7 @@ class TasksRobot(models.Model):
 
     def __unicode__(self):
         return self.task_label if self.task_label else self.task_celey_id
+
+    def change_data(self, **kwargs):
+        self.__dict__.update(**kwargs)
+        self.save()

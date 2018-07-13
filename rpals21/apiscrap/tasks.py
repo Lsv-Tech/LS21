@@ -1,6 +1,8 @@
-import ast, time
 from celery import Task, chord, current_app as app
 from celery.worker.request import Request
+from django.utils import timezone
+import ast
+import time
 
 from apiscrap.models import TasksRobot, RobotMonitor
 from utils.mydebugs import save_log_debug
@@ -9,53 +11,38 @@ from utils.mydebugs import save_log_debug
 class MyRequest(Request):
     def on_accepted(self, pid, time_accepted):
         """Handler called when task is accepted by worker pool."""
-        print('on_accepted')
         super(MyRequest, self).on_accepted(pid, time_accepted)
-
         body = ast.literal_eval(self.body[1:(self.body.find('],') + 1)])  # Get body params
-        print('hola')
-        robot_mon = RobotMonitor.objects.get(int(body[0]))
+
+        robot_mon = RobotMonitor.objects.get(pk=int(body[0]))
         # TaskRobot Created
         TasksRobot.objects.create(
             task_celey_id=self.task_id,
             task_label=self.task_name,
-            robot_mon=robot_mon
+            robot_monitor=robot_mon
         )
 
+    def on_timeout(self, soft, timeout):
+        """Handler called if the task times out."""
+        super(MyRequest, self).on_timeout(soft, timeout)
+        # save debug
+        save_log_debug('Failure detected for task %s: Hard time limit (%ss) exceeded for %s[%s]',
+                       self.task, timeout, self.name, self.id)
 
-def on_timeout(self, soft, timeout):
-    """Handler called if the task times out."""
-    super(MyRequest, self).on_timeout(soft, timeout)
-    # save debug
-    save_log_debug('Failure detected for task %s: Hard time limit (%ss) exceeded for %s[%s]',
-                   self.task, timeout, self.name, self.id)
-
-
-def on_failure(self, exc_info, send_failed_event=True, return_ok=False):
-    """Handler called if the task raised an exception."""
-    super(MyRequest, self).on_failure(exc_info, send_failed_event, return_ok)
-    # Save debug Exceptio From Request
-    save_log_debug('Failure detected for task %s', self.task.name)
+    def on_failure(self, exc_info, send_failed_event=True, return_ok=False):
+        """Handler called if the task raised an exception."""
+        super(MyRequest, self).on_failure(exc_info, send_failed_event, return_ok)
+        # Save debug Exceptio From Request
+        save_log_debug('Failure detected for task %s', self.task.name)
 
 
 class CustomTaskRobot(Task):
     Request = MyRequest
 
+    def __get_task_robot(self, task_celery_id):
+        return TasksRobot.objects.get(task_celey_id=task_celery_id)
+
     #  Overrides Methods
-
-    def update_state(self, task_id=None, state=None, meta=None):
-        """Update task state.
-
-        Arguments:
-            task_id (str): Id of the task to update.
-                Defaults to the id of the current task.
-            state (str): New state.
-            meta (Dict): State meta-data.
-        """
-        if task_id is None:
-            task_id = self.request.id
-        # self.backend.store_result(task_id, meta, state)
-
     def on_success(self, retval, task_id, args, kwargs):
         """Success handler.
 
@@ -70,6 +57,10 @@ class CustomTaskRobot(Task):
         Returns:
             None: The return value of this handler is ignored.
         """
+        self.__get_task_robot(task_id).change_data(
+            result=retval,
+            finished=timezone.now()
+        )
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """Retry handler.
@@ -102,6 +93,10 @@ class CustomTaskRobot(Task):
         Returns:
             None: The return value of this handler is ignored.
         """
+        self.__get_task_robot(task_id).change_data(
+            exception=einfo,
+            finished=timezone.now()
+        )
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         """Handler called after the task returns.
@@ -117,38 +112,39 @@ class CustomTaskRobot(Task):
         Returns:
             None: The return value of this handler is ignored.
         """
+        self.__get_task_robot(task_id).change_data(
+            status=status
+        )
 
 
-@app.task()
+@app.task(name='InitRobot')
 def run_robots(pk=None):
-    print('AQUIII')
-    print(pk)
     return chord(
-        (add.s(pk, 5, 5), add.s(pk, 1, 4), add.s(pk), saludar(pk), saludar(pk, 'Fredy Mendoza Vargas'))
-    )(callback_result.s())
+        (add.s(pk, 5, 5), add.s(pk, 1, 4), add.s(pk), div.s(pk), saludar.s(pk), saludar.s(pk, 'Fredy Mendoza Vargas'))
+    )(callback_result.s().on_error())
 
 
-@app.task(base=CustomTaskRobot, name='TaskSaludo')
-def saludar(pk_robotmon=None, name='World'):
-    print('pk <{}>'.format(pk_robotmon))
+@app.task(bind=True, base=CustomTaskRobot, name='TaskSaludo')
+def saludar(self, pk_robotmon, name='World'):
+    print('Saludar pk <{}>'.format(pk_robotmon))
     time.sleep(60)
     return 'Hello {}, How are you?'.format(name)
 
 
-@app.task(base=CustomTaskRobot, name='AddTask')
-def add(pk_robotmon=None, a=1, b=2):
+@app.task(bind=True, base=CustomTaskRobot, name='AddTask')
+def add(self, pk_robotmon, a=1, b=2):
+    print('Sumando pK <{}>'.format(pk_robotmon))
     time.sleep(20)
-    print('pK <{}>'.format(pk_robotmon))
     return a + b
 
 
-@app.task()
+@app.task(bind=True, base=CustomTaskRobot, name='AddTask')
+def div(self, pk_robotmon, a=1, b=0):
+    print('Dividiendo pK <{}>'.format(pk_robotmon))
+    time.sleep(5)
+    return a / b
+
+
+@app.task(name='ResultTask')
 def callback_result(resp):
     print(resp)
-
-# [["Fredy", "Mendoza"], {}, {"errbacks": null, "callbacks": null, "chain": null, "chord": null}]
-# print(self.body)
-# print(ast.literal_eval(self.body[1:(self.body.find('],') + 1)])[0])
-
-# for item in fruits:
-#     print(item)
