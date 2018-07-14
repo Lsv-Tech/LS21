@@ -18,6 +18,10 @@ class RobotMonitor(models.Model):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='CREATED')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='robots')
 
+    def change_data(self, **kwargs):
+        self.__dict__.update(**kwargs)
+        self.save()
+
     def __str__(self):
         return 'Robot #{} - By: {}.'.format(self.pk, self.owner.username)
 
