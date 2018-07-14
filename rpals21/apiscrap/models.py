@@ -43,9 +43,6 @@ class TasksRobot(models.Model):
     def __str__(self):
         return self.task_label if self.task_label else self.task_celey_id
 
-    def __unicode__(self):
-        return self.task_label if self.task_label else self.task_celey_id
-
     def change_data(self, **kwargs):
         self.__dict__.update(**kwargs)
         self.save()

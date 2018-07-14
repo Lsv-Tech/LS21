@@ -29,7 +29,7 @@ class TaskRobotModelSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TasksRobot
-        fields = ('task_celey_id', 'task_label', 'status', 'result', 'robot_monitor_obj', 'robot_monitor',)
+        fields = ('task_celey_id', 'task_label', 'status', 'result', 'robot_monitor', 'robot_monitor_obj',)
 
     def get_robot_monitor_obj(self, obj):
-        return RobotModelSerializer(read_only=True)
+        return RobotModelSerializer(instance=obj.robot_monitor).data

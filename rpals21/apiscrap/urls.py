@@ -2,9 +2,9 @@ from rest_framework.routers import SimpleRouter
 
 from apiscrap.views import RobotModelViewSet, TaskRobotModelViewSet
 
-router = SimpleRouter()
+router_project = SimpleRouter()
 
-router.register('robot', RobotModelViewSet)
-router.register('tasks', TaskRobotModelViewSet)
+router_project.register('robot', RobotModelViewSet)
+router_project.register('tasks', TaskRobotModelViewSet)
 
-urlpatterns = router.urls
+urlpatterns = router_project.urls

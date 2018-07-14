@@ -1,7 +1,9 @@
 from celery import Task, chord, current_app as app
 from celery.worker.request import Request
+from django.core.mail import EmailMessage
 from django.utils import timezone
 import ast
+import os
 import time
 
 from apiscrap.models import TasksRobot, RobotMonitor
@@ -121,7 +123,7 @@ class CustomTaskRobot(Task):
 def run_robots(pk=None):
     return chord(
         (add.s(pk, 5, 5), add.s(pk, 1, 4), add.s(pk), div.s(pk), saludar.s(pk), saludar.s(pk, 'Fredy Mendoza Vargas'))
-    )(callback_result.s().on_error())
+    )(callback_result.s(pk).on_error(callback_result.s(pk)))
 
 
 @app.task(bind=True, base=CustomTaskRobot, name='TaskSaludo')
@@ -138,7 +140,7 @@ def add(self, pk_robotmon, a=1, b=2):
     return a + b
 
 
-@app.task(bind=True, base=CustomTaskRobot, name='AddTask')
+@app.task(bind=True, base=CustomTaskRobot, name='DivTasks')
 def div(self, pk_robotmon, a=1, b=0):
     print('Dividiendo pK <{}>'.format(pk_robotmon))
     time.sleep(5)
@@ -146,5 +148,43 @@ def div(self, pk_robotmon, a=1, b=0):
 
 
 @app.task(name='ResultTask')
-def callback_result(resp):
-    print(resp)
+def callback_result(resp, pk):
+    (generate_report.s() | send_email.s(pk))()
+
+
+@app.task
+def generate_report():
+    dir_file = 'temps/report_user.xlsx'
+    # workbook = xlsxwriter.Workbook(dir_file, {'remove_timezone': True, 'default_date_format': 'dd/mm/yy'})
+    # worksheet = workbook.add_worksheet()
+    #
+    # # Add a bold format to use to highlight cells.
+    # bold = workbook.add_format({'bold': 1})
+    #
+    # # Write some data headers.
+    # for col in range(len(HEADERS)):
+    #     worksheet.write(0, col, HEADERS[col], bold)
+    #
+    # users = User.objects.filter(is_active=1)
+    # for row, user in enumerate(users, start=1):
+    #     for col in range(len(HEADERS)):
+    #         worksheet.write(row, col, user.__dict__[HEADERS[col]])
+    #
+    # workbook.close()
+    return dir_file
+
+
+@app.task
+def send_email(filepath, pk):
+    e = EmailMessage('Reportes', 'Cuerpo del mensaje {} con Pk {}'.format(filepath, pk),
+                     to=['fredylsvprueba@gmail.com', 'fredymv03@gmail.com'])
+    # e.attach_file(filepath)  # Adjuntamos el archivo a enviar.
+    e.send()
+
+    return filepath
+
+
+@app.task
+def removefile(route):
+    os.remove(route)
+    return 'Archivo borrado!!'
