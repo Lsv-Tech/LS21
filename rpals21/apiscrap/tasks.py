@@ -121,7 +121,7 @@ def send_email(filepath, pk):
     robot = RobotMonitor.objects.get(pk=pk)
     task_fails = robot.tasks.filter(status='FAILURE').count()
     task_ok = robot.tasks.filter(status='SUCCESS').count()
-    subject = 'ROBOT #{} FINALIZADO'
+    subject = 'ROBOT #{} FINALIZADO'.format(str(robot.id))
     msg = 'El robot #{} con la keyword -> {}:\n\nTareas Fallidas: {}\nTareas Finalizadas Corectamente: {}'.format(
         robot.id, robot.search_key, task_fails, task_ok)
     e = EmailMessage(subject, msg, to=['fredylsvprueba@gmail.com', 'fredymv03@gmail.com'])
