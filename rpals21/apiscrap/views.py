@@ -17,7 +17,7 @@ class RobotModelViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         robot = serializer.save()
-        run_robots.delay(robot.id)
+        run_robots.delay(robot.id, robot.search_key)
 
 
 class TaskRobotModelViewSet(ModelViewSet):

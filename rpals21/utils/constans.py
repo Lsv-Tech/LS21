@@ -1,0 +1,4 @@
+HEADERS = ['titulo',
+           'precio',
+           'link',
+           ]
